@@ -35,7 +35,7 @@ jobs:
       - name: Archive (Real Device Build)
         run: |
           scheme=$(cat default)
-          file=$(ls -1 *.xcworkspace 2>/dev/null || ls -1 *.xcodeproj)
+          file=$(ls -d *.xcworkspace 2>/dev/null || ls -1 *.xcodeproj)
           xcodebuild archive \
             -scheme "$scheme" \
             -archivePath build/MyApp.xcarchive \
