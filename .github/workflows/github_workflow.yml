@@ -32,15 +32,32 @@ jobs:
           xcodebuild build-for-testing -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=$device"
   # Chat GPT.
           # 🔥 NEW STEP: Archive for real device
-      - name: Archive (Real Device Build)
+      - name: Archive (Real Device Build)      
         run: |
           scheme=$(cat default)
-          file=$(ls -d *.xcworkspace 2>/dev/null || ls -1 *.xcodeproj)
-          xcodebuild archive \
-            -scheme "$scheme" \
-            -archivePath build/MyApp.xcarchive \
-            -destination "generic/platform=iOS" \
-            -"$([[ $file == *.xcworkspace ]] && echo "workspace" || echo "project")" "$file"
+          
+          # Detect whether workspace or project exists
+          workspace=$(ls -d *.xcworkspace 2>/dev/null | head -n 1)
+          project=$(ls -d *.xcodeproj 2>/dev/null | head -n 1)
+      
+          if [ -n "$workspace" ]; then
+            echo "Using workspace: $workspace"
+            xcodebuild archive \
+              -workspace "$workspace" \
+              -scheme "$scheme" \
+              -archivePath build/MyApp.xcarchive \
+              -destination "generic/platform=iOS"
+          elif [ -n "$project" ]; then
+            echo "Using project: $project"
+            xcodebuild archive \
+              -project "$project" \
+              -scheme "$scheme" \
+              -archivePath build/MyApp.xcarchive \
+              -destination "generic/platform=iOS"
+          else
+            echo "❌ No Xcode workspace or project found!"
+            exit 1
+          fi
 
       # 🔥 NEW STEP: Export IPA
       - name: Export IPA
