@@ -1,0 +1,93 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    name: Build and Test default scheme using any available iPhone simulator
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set Default Scheme
+        run: |
+          scheme_list=$(xcodebuild -list -json | tr -d "\n")
+          default=$(echo $scheme_list | ruby -e "require 'json'; puts JSON.parse(STDIN.gets)['project']['targets'][0]")
+          echo $default | cat >default
+          echo Using default scheme: $default
+      - name: Build
+        env:
+          scheme: ${{ 'default' }}
+          platform: ${{ 'iOS Simulator' }}
+        run: |
+          device=`xcrun xctrace list devices 2>&1 | grep -oE 'iPhone.*?[^\(]+' | head -1 | awk '{$1=$1;print}' | sed -e "s/ Simulator$//"`
+          if [ $scheme = default ]; then scheme=$(cat default); fi
+          if [ "`ls -A | grep -i \\.xcworkspace\$`" ]; then filetype_parameter="workspace" && file_to_build="`ls -A | grep -i \\.xcworkspace\$`"; else filetype_parameter="project" && file_to_build="`ls -A | grep -i \\.xcodeproj\$`"; fi
+          file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
+          xcodebuild build-for-testing -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=$device"
+  # Chat GPT.
+          # 🔥 NEW STEP: Archive for real device
+      - name: Archive (Real Device Build)      
+        run: |
+          scheme=$(cat default)
+          
+          # Detect whether workspace or project exists
+          workspace=$(ls -d *.xcworkspace 2>/dev/null | head -n 1)
+          project=$(ls -d *.xcodeproj 2>/dev/null | head -n 1)
+      
+          if [ -n "$workspace" ]; then
+            echo "Using workspace: $workspace"
+            xcodebuild archive \
+              -workspace "$workspace" \
+              -scheme "$scheme" \
+              -archivePath build/MyApp.xcarchive \
+              -destination "generic/platform=iOS"
+          elif [ -n "$project" ]; then
+            echo "Using project: $project"
+            xcodebuild archive \
+              -project "$project" \
+              -scheme "$scheme" \
+              -archivePath build/MyApp.xcarchive \
+              -destination "generic/platform=iOS"
+          else
+            echo "❌ No Xcode workspace or project found!"
+            exit 1
+          fi
+
+      # 🔥 NEW STEP: Export IPA
+      - name: Export IPA
+        run: |
+          mkdir -p build/ipa
+          cat <<EOF > ExportOptions.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>ad-hoc</string>
+            <key>compileBitcode</key>
+            <false/>
+            <key>destination</key>
+            <string>export</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+            -archivePath build/MyApp.xcarchive \
+            -exportPath build/ipa \
+            -exportOptionsPlist ExportOptions.plist
+
+      # 🔥 NEW STEP: Upload as GitHub Artifact
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build
+          path: build/ipa
