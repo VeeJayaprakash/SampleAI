@@ -11,15 +11,17 @@ import Foundation
 class UserViewModel: ObservableObject {
     @Published var users: [User] = []
     private var cancellable: AnyCancellable?
+    private var cancellables = Set<AnyCancellable>()
 
     func fetchUsers() {
         guard let url = URL(string: "https://jsonplaceholder.typicode.com/users") else { return }
-        cancellable = URLSession.shared.dataTaskPublisher(for: url)
+        URLSession.shared.dataTaskPublisher(for: url)
             .map(\.data)
             .decode(type: [User].self, decoder: JSONDecoder())
             .replaceError(with: [])
             .receive(on: DispatchQueue.main)
             .assign(to: \.users, on: self)
+            .store(in: &cancellables)
     }
 }
 
