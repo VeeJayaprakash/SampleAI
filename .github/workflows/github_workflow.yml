@@ -15,12 +15,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        
       - name: Set Default Scheme
         run: |
           scheme_list=$(xcodebuild -list -json | tr -d "\n")
           default=$(echo $scheme_list | ruby -e "require 'json'; puts JSON.parse(STDIN.gets)['project']['targets'][0]")
           echo $default | cat >default
           echo Using default scheme: $default
+          
       - name: Build
         env:
           scheme: ${{ 'default' }}
@@ -31,60 +33,106 @@ jobs:
           if [ "`ls -A | grep -i \\.xcworkspace\$`" ]; then filetype_parameter="workspace" && file_to_build="`ls -A | grep -i \\.xcworkspace\$`"; else filetype_parameter="project" && file_to_build="`ls -A | grep -i \\.xcodeproj\$`"; fi
           file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
           xcodebuild build-for-testing -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=$device"
-  # Chat GPT.
-          # 🔥 NEW STEP: Archive for real device
-      - name: Archive (Real Device Build)      
+
+      - name: Prepare signing assets (install cert & provisioning profile)
+        env:
+          CERT_P12: ${{ secrets.CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
+          PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
         run: |
-          scheme=$(cat default)
-          
-          # Detect whether workspace or project exists
-          workspace=$(ls -d *.xcworkspace 2>/dev/null | head -n 1)
-          project=$(ls -d *.xcodeproj 2>/dev/null | head -n 1)
-      
-          if [ -n "$workspace" ]; then
-            echo "Using workspace: $workspace"
-            xcodebuild archive \
-              -workspace "$workspace" \
-              -scheme "$scheme" \
-              -archivePath build/MyApp.xcarchive \
-              -destination "generic/platform=iOS"
-          elif [ -n "$project" ]; then
-            echo "Using project: $project"
-            xcodebuild archive \
-              -project "$project" \
-              -scheme "$scheme" \
-              -archivePath build/MyApp.xcarchive \
-              -destination "generic/platform=iOS"
-          else
-            echo "❌ No Xcode workspace or project found!"
-            exit 1
+          set -euo pipefail
+
+          KEYCHAIN="ci-build-$$.keychain"
+          security create-keychain -p "" "$KEYCHAIN"
+          security set-keychain-settings -t 3600 -l "$KEYCHAIN"
+          security unlock-keychain -p "" "$KEYCHAIN"
+          security list-keychains -s "$HOME/Library/Keychains/$KEYCHAIN" $(security list-keychains | sed -n 's/^[[:space:]]*//p')
+
+          echo "$CERT_P12" | base64 --decode > /tmp/ci-cert.p12
+          security import /tmp/ci-cert.p12 -k "$HOME/Library/Keychains/$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+
+          IDENTITY=$(security find-identity -v -p codesigning | awk '/Apple Distribution/ {print $2; exit}' || true)
+          if [ -z "$IDENTITY" ]; then
+            IDENTITY=$(security find-identity -v -p codesigning | awk '/[0-9A-F]{40}/ {print $2; exit}' || true)
           fi
 
-      # 🔥 NEW STEP: Export IPA
-      - name: Export IPA
+          if [ -n "$IDENTITY" ]; then
+            security set-key-partition-list -S apple-tool:,apple: -s -k "" -D "$HOME/Library/Keychains/$KEYCHAIN" "$IDENTITY" || true
+          fi
+
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROVISIONING_PROFILE" | base64 --decode > /tmp/ci-profile.mobileprovision
+          security cms -D -i /tmp/ci-profile.mobileprovision > /tmp/ci-profile.plist
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /tmp/ci-profile.plist)
+          mv /tmp/ci-profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/${PROFILE_UUID}.mobileprovision
+          echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
+
+          rm -f /tmp/ci-cert.p12 /tmp/ci-profile.plist
+
+      - name: Create ExportOptions.plist (app-store)
+        env:
+          TEAM_ID: ${{ secrets.DEVELOPMENT_TEAM }}
+          PROFILE_UUID: ${{ env.PROFILE_UUID }}
         run: |
-          mkdir -p build/ipa
-          cat <<EOF > ExportOptions.plist
+          cat > ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
             <key>method</key>
-            <string>ad-hoc</string>
+            <string>app-store</string>
+            <key>teamID</key>
+            <string>${TEAM_ID}</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.vijendran.connect</key>
+              <string>${PROFILE_UUID}</string>
+            </dict>
             <key>compileBitcode</key>
-            <false/>
-            <key>destination</key>
-            <string>export</string>
-            <key>signingStyle</key>
-            <string>automatic</string>
+            <true/>
           </dict>
           </plist>
           EOF
 
-          xcodebuild -exportArchive \
-            -archivePath build/MyApp.xcarchive \
-            -exportPath build/ipa \
-            -exportOptionsPlist ExportOptions.plist
+      - name: Archive and export (signed for TestFlight / App Store)
+        env:
+          TEAM_ID: ${{ secrets.DEVELOPMENT_TEAM }}
+          PROFILE_UUID: ${{ env.PROFILE_UUID }}
+        run: |
+          set -euo pipefail
+
+          # choose workspace or project
+          if [ -d "SampleAI.xcworkspace" ]; then
+            XCODEBUILD_TARGET=( -workspace SampleAI.xcworkspace -scheme SampleAI )
+          else
+            XCODEBUILD_TARGET=( -project SampleAI.xcodeproj -scheme SampleAI )
+          fi
+
+          xcodebuild "${XCODEBUILD_TARGET[@]}" -archivePath build/SampleAI.xcarchive clean archive \
+            DEVELOPMENT_TEAM="${TEAM_ID}" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE="${PROFILE_UUID}"
+
+          xcodebuild -exportArchive -archivePath build/SampleAI.xcarchive -exportPath build/IPA -exportOptionsPlist ExportOptions.plist
+
+          ls -la build/IPA || true
+
+      - name: Cleanup signing assets
+        if: always()
+        env:
+          PROFILE_UUID: ${{ env.PROFILE_UUID }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PROFILE_UUID:-}" ]; then
+            rm -f ~/Library/MobileDevice/Provisioning\ Profiles/${PROFILE_UUID}.mobileprovision || true
+          fi
+
+          for K in $(security list-keychains | sed -E 's/^[[:space:]]*//;s/"//g' | grep -E 'ci-build-' || true); do
+            security delete-keychain "$K" || true
+          done
+
+          rm -f /tmp/ci-cert.p12 /tmp/ci-profile.mobileprovision /tmp/ci-profile.plist || true
 
       # 🔥 NEW STEP: Upload as GitHub Artifact
       - name: Upload IPA Artifact
