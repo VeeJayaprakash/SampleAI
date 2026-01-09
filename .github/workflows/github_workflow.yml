@@ -108,15 +108,17 @@ jobs:
             XCODEBUILD_TARGET=( -project SampleAI.xcodeproj -scheme SampleAI )
           fi
 
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" -D "$HOME/Library/Keychains/$KEYCHAIN"
+          
           xcodebuild "${XCODEBUILD_TARGET[@]}" -archivePath build/SampleAI.xcarchive clean archive \
             DEVELOPMENT_TEAM="${TEAM_ID}" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             PROVISIONING_PROFILE="${PROFILE_UUID}"
 
-         # xcodebuild -exportArchive -archivePath build/SampleAI.xcarchive -exportPath build/IPA -exportOptionsPlist ExportOptions.plist
+          xcodebuild -exportArchive -archivePath build/SampleAI.xcarchive -exportPath build/IPA -exportOptionsPlist ExportOptions.plist
 
-        #  ls -la build/IPA || true
+          ls -la build/IPA || true
 
       - name: Cleanup signing assets
         if: always()
