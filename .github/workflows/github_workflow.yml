@@ -34,6 +34,14 @@ jobs:
    #       file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
    #      xcodebuild build-for-testing -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=$device"
 
+      - name: Debug shell environment
+        run: |
+          echo "GITHUB_RUN_ID=$GITHUB_RUN_ID"
+          echo "Shell: $SHELL"
+          echo "set -u status: $(set +u; echo $?)"  # Should print 0
+          set | grep -E '^(BASH|VARE|NOUN)|set=' || true
+          env | grep GITHUB || true
+
       - name: Prepare signing assets (install cert & provisioning profile)
         env:
           CERT_P12: ${{ secrets.CERT_P12 }}
