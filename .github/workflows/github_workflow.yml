@@ -43,7 +43,7 @@ jobs:
           set -euo pipefail
 
           #KEYCHAIN="ci-build-$$.keychain"
-          KEYCHAIN_PATH="$HOME/Library/Keychains/ci-build-${{ github.run_id }}.keychain"
+          KEYCHAIN_PATH="$HOME/Library/Keychains/ci-build-${{GITHUB_RUN_ID}}.keychain"
           security create-keychain -p "" "$KEYCHAIN"
           security set-keychain-settings -t 3600 -l "$KEYCHAIN"
           security unlock-keychain -p "" "$KEYCHAIN"
