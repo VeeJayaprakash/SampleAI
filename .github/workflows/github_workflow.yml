@@ -53,7 +53,8 @@ jobs:
           set -eo pipefail
 
           # KEYCHAIN="ci-build-$$.keychain"
-          KEYCHAIN_PATH="$HOME/Library/Keychains/ci-build-${GITHUB_RUN_ID}.keychain"
+          # KEYCHAIN_PATH="$HOME/Library/Keychains/ci-build-${GITHUB_RUN_ID}.keychain"
+          KEYCHAIN="$HOME/Library/Keychains/build.keychain"
           echo "Using keychain: $KEYCHAIN"
           
           security create-keychain -p "" "$KEYCHAIN"
