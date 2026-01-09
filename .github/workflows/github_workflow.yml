@@ -40,7 +40,7 @@ jobs:
           CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
           PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           #KEYCHAIN="ci-build-$$.keychain"
           KEYCHAIN_PATH="$HOME/Library/Keychains/ci-build-${{github.run_id}}.keychain"
