@@ -114,9 +114,9 @@ jobs:
             CODE_SIGN_IDENTITY="Apple Distribution" \
             PROVISIONING_PROFILE="${PROFILE_UUID}"
 
-          xcodebuild -exportArchive -archivePath build/SampleAI.xcarchive -exportPath build/IPA -exportOptionsPlist ExportOptions.plist
+         # xcodebuild -exportArchive -archivePath build/SampleAI.xcarchive -exportPath build/IPA -exportOptionsPlist ExportOptions.plist
 
-          ls -la build/IPA || true
+        #  ls -la build/IPA || true
 
       - name: Cleanup signing assets
         if: always()
