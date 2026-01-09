@@ -47,11 +47,15 @@ jobs:
           CERT_P12: ${{ secrets.CERT_P12 }}
           CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
           PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          
         run: |
           set -eo pipefail
 
           # KEYCHAIN="ci-build-$$.keychain"
-          KEYCHAIN_PATH="$HOME/Library/Keychains/ci-build-${{github.run_id}}.keychain"
+          KEYCHAIN_PATH="$HOME/Library/Keychains/ci-build-${GITHUB_RUN_ID}.keychain"
+          echo "Using keychain: $KEYCHAIN"
+          
           security create-keychain -p "" "$KEYCHAIN"
           security set-keychain-settings -t 3600 -l "$KEYCHAIN"
           security unlock-keychain -p "" "$KEYCHAIN"
