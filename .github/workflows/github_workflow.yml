@@ -100,7 +100,7 @@ jobs:
           TEAM_ID: ${{ secrets.DEVELOPMENT_TEAM }}
           PROFILE_UUID: ${{ env.PROFILE_UUID }}
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           # choose workspace or project
           if [ -d "SampleAI.xcworkspace" ]; then
