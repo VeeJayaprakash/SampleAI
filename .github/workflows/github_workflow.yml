@@ -69,7 +69,7 @@ jobs:
           security unlock-keychain -p "$PASSWORD" "$KEYCHAIN_PATH"
           
           # 5. Set timeout
-          security set-keychain-settings -t 3600 -u "$KEYCHAIN"
+          security set-keychain-settings -t 3600 -u "$KEYCHAIN_PATH"
           
           # 6. Verify unlocked
           security unlock-keychain -p "$PASSWORD" "$KEYCHAIN_PATH"
@@ -85,7 +85,7 @@ jobs:
           fi
 
           if [ -n "$IDENTITY" ]; then
-            security set-key-partition-list -S apple-tool:,apple: -s -k "" -D "$HOME/Library/Keychains/$KEYCHAIN" "$IDENTITY" || true
+            security set-key-partition-list -S apple-tool:,apple: -s -k "$PASSWORD" "$KEYCHAIN_PATH" || true
           fi
 
           security list-keychain -d user -s "$KEYCHAIN_PATH"
