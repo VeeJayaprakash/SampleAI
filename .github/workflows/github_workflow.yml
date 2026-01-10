@@ -51,9 +51,9 @@ jobs:
           set -eo pipefail
           
           KEYCHAIN="build.keychain-db"
-          KEYCHAIN_PATH="$RUNNER_TEMP/$KEYCHAIN"
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
           PASSWORD="temp123"
-          echo "Using keychain: $KEYCHAIN"
+          echo "Using keychain: $KEYCHAIN_PATH"
           
           # 1. Create
           security create-keychain -p "$PASSWORD" "$KEYCHAIN_PATH"
