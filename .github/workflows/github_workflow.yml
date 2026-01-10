@@ -50,32 +50,33 @@ jobs:
         run: |
           set -eo pipefail
           
-          KEYCHAIN="$HOME/Library/Keychains/build.keychain"
+          KEYCHAIN="build.keychain-db"
+          KEYCHAIN_PATH="$RUNNER_TEMP/$KEYCHAIN"
           PASSWORD="temp123"
           echo "Using keychain: $KEYCHAIN"
           
           # 1. Create
-          security create-keychain -p "$PASSWORD" "$KEYCHAIN"
+          security create-keychain -p "$PASSWORD" "$KEYCHAIN_PATH"
           
           # 2. Set default FIRST
-          security default-keychain -s "$KEYCHAIN"
+          security default-keychain -s "$KEYCHAIN_PATH"
           
           # 3. Verify it's listed
           security list-keychains
           
           # 4. Unlock (sometimes needs delay on runners)
           sleep 2
-          security unlock-keychain -p "$PASSWORD" "$KEYCHAIN"
+          security unlock-keychain -p "$PASSWORD" "$KEYCHAIN_PATH"
           
           # 5. Set timeout
           security set-keychain-settings -t 3600 -u "$KEYCHAIN"
           
           # 6. Verify unlocked
-          security show-keychain-info "$KEYCHAIN"
+          security unlock-keychain -p "$PASSWORD" "$KEYCHAIN_PATH"
           
           # 7. Import cert
           echo "$CERT_P12" | base64 -d > /tmp/ci-cert.p12
-          security import /tmp/ci-cert.p12 -k "$KEYCHAIN" -P "$CERT_PASSWORD" \
+          security import /tmp/ci-cert.p12 -k "$KEYCHAIN_PATH" -P "$CERT_PASSWORD" \
             -T /usr/bin/codesign
             
           IDENTITY=$(security find-identity -v -p codesigning | awk '/Apple Distribution/ {print $2; exit}' || true)
@@ -86,6 +87,9 @@ jobs:
           if [ -n "$IDENTITY" ]; then
             security set-key-partition-list -S apple-tool:,apple: -s -k "" -D "$HOME/Library/Keychains/$KEYCHAIN" "$IDENTITY" || true
           fi
+
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
 
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "$PROVISIONING_PROFILE" | base64 --decode > /tmp/ci-profile.mobileprovision
@@ -134,8 +138,9 @@ jobs:
           else
             XCODEBUILD_TARGET=( -project SampleAI.xcodeproj -scheme SampleAI )
           fi
-
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" -D "$HOME/Library/Keychains/$KEYCHAIN"
+          
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$PASSWORD" "$KEYCHAIN_PATH"
           xcodebuild "${XCODEBUILD_TARGET[@]}" -archivePath build/SampleAI.xcarchive clean archive \
             DEVELOPMENT_TEAM="${TEAM_ID}" \
             CODE_SIGN_STYLE=Manual \
