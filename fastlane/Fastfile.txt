@@ -1,0 +1,10 @@
+opt_out_usage
+lane :beta do
+  upload_to_testflight(
+    username: ENV["vijaypescs@gmail.com"],
+    ipa: "build/IPA/SampleAI.ipa",           # ← Matches your IPA path
+    distribute_external: true,
+    groups: ["Beta testers"],            # ← Your group name
+    skip_waiting_for_build_processing: true
+  )
+end
