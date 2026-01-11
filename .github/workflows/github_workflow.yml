@@ -152,13 +152,18 @@ jobs:
           ls -la build/IPA || true
 
       - name: Upload to TestFlight (optional)
-        if: ${{ secrets.APPLE_ID != '' && secrets.APP_SPECIFIC_PASSWORD != '' }}
         env:
-           APPLE_ID: ${{ secrets.APPLE_ID }}
-           APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
         run: |
           set -euo pipefail
-          xcrun altool --upload-app -f build/IPA/*.ipa -u "$APPLE_ID" -p "$APP_SPECIFIC_PASSWORD" --type ios || true
+          if [ -n "$APPLE_ID" ] && [ -n "$APP_SPECIFIC_PASSWORD" ]; then
+            echo "Uploading to TestFlight..."
+            xcrun altool --upload-app -f build/IPA/*.ipa -u "$APPLE_ID" -p "$APP_SPECIFIC_PASSWORD" --type ios
+          else
+            echo "Skipping TestFlight upload (missing credentials)"
+            exit 0
+          fi
 
       - name: Cleanup signing assets
         if: always()
