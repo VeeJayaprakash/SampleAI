@@ -175,6 +175,8 @@ jobs:
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+          FASTLANE_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}          # ← ADD THIS
+          SPACESHIP_SKIP_2FA: "true"                                      # ← ADD THIS
         run: |
           set -euo pipefail
           gem install fastlane -NV
