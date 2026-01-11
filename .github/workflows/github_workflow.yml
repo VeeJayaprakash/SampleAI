@@ -164,6 +164,12 @@ jobs:
    #         echo "Skipping TestFlight upload (missing credentials)"
    #         exit 0
    #       fi
+
+      - name: Verify Fastlane & IPA
+        run: |
+          echo "Current dir:" $(pwd)
+          ls -la fastlane/ || echo "❌ MISSING fastlane folder"
+          ls -la build/IPA/ || echo "❌ MISSING IPA"
    
       - name: Upload & Distribute to TestFlight
         env:
