@@ -151,19 +151,36 @@ jobs:
 
           ls -la build/IPA || true
 
-      - name: Upload to TestFlight (optional)
+   #   - name: Upload to TestFlight (optional)
+   #     env:
+   #       APPLE_ID: ${{ secrets.APPLE_ID }}
+   #       APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+   #     run: |
+   #       set -euo pipefail
+   #       if [ -n "$APPLE_ID" ] && [ -n "$APP_SPECIFIC_PASSWORD" ]; then
+   #         echo "Uploading to TestFlight..."
+   #         xcrun altool --upload-app -f build/IPA/*.ipa -u "$APPLE_ID" -p "$APP_SPECIFIC_PASSWORD" --type ios
+   #       else
+   #         echo "Skipping TestFlight upload (missing credentials)"
+   #         exit 0
+   #       fi
+
+      - name: Install Fastlane
+        run: |
+          gem install fastlane -NV
+
+      - name: Upload & Distribute to TestFlight
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+          FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
         run: |
           set -euo pipefail
-          if [ -n "$APPLE_ID" ] && [ -n "$APP_SPECIFIC_PASSWORD" ]; then
-            echo "Uploading to TestFlight..."
-            xcrun altool --upload-app -f build/IPA/*.ipa -u "$APPLE_ID" -p "$APP_SPECIFIC_PASSWORD" --type ios
-          else
-            echo "Skipping TestFlight upload (missing credentials)"
-            exit 0
-          fi
+          fastlane pilot upload \
+          --ipa "build/IPA/SampleAI.ipa" \
+          --distribute_external true \
+          --skip_waiting_for_build_processing true \
+          --groups "Beta testers"  # Your external group name
 
       - name: Cleanup signing assets
         if: always()
