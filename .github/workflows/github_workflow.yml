@@ -177,7 +177,7 @@ jobs:
         run: |
           set -euo pipefail
           fastlane pilot upload \
-          --ipa "build/IPA/*.ipa" \
+          --ipa "build/IPA/SampleAI.ipa" \
           --distribute_external true \
           --skip_waiting_for_build_processing true \
           --groups "Beta testers"  # Your external group name
