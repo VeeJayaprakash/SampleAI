@@ -165,22 +165,21 @@ jobs:
    #         exit 0
    #       fi
 
-      - name: Install Fastlane
+      - name: Verify Fastlane & IPA
         run: |
-          gem install fastlane -NV
-
+          echo "Current dir:" $(pwd)
+          ls -la fastlane/ || echo "❌ MISSING fastlane folder"
+          ls -la build/IPA/ || echo "❌ MISSING IPA"
+   
       - name: Upload & Distribute to TestFlight
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
-          APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
           FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
         run: |
           set -euo pipefail
-          fastlane pilot upload \
-          --ipa "build/IPA/SampleAI.ipa" \
-          --distribute_external true \
-          --skip_waiting_for_build_processing true \
-          --groups "Beta testers"  # Your external group name
+          gem install fastlane -NV
+          # Run Fastfile "beta" lane instead of direct pilot command
+          fastlane beta
 
       - name: Cleanup signing assets
         if: always()
