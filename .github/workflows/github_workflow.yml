@@ -152,7 +152,7 @@ jobs:
           ls -la build/IPA || true
 
       - name: Upload to TestFlight (optional)
-        if: ${{ secrets.APPLE_ID && secrets.APP_SPECIFIC_PASSWORD }}
+        if: ${{ secrets.APPLE_ID != '' && secrets.APP_SPECIFIC_PASSWORD != '' }}
         env:
            APPLE_ID: ${{ secrets.APPLE_ID }}
            APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
