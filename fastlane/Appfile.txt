@@ -1,0 +1,3 @@
+app_identifier("com.vijendran.connect") # Your bundle ID
+apple_id("vijaypescs@gmail.com")    # Will be overridden by CI secrets
+team_id("7BY7HSAL34")                 # From Apple Developer portal
