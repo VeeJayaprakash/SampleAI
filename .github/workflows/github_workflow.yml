@@ -175,12 +175,12 @@ jobs:
           APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
           FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
         run: |
-          cd ios  # Adjust to your Fastfile location
+          set -euo pipefail
           fastlane pilot upload \
-          --ipa "../build/IPA/*.ipa" \
+          --ipa "build/IPA/*.ipa" \
           --distribute_external true \
           --skip_waiting_for_build_processing true \
-          --groups "QA Team"  # Your external group name
+          --groups "Beta testers"  # Your external group name
 
       - name: Cleanup signing assets
         if: always()
